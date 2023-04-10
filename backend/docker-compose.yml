@@ -1,0 +1,94 @@
+version: '3'
+
+services:
+  Atendimentos-backend:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    env_file:
+      - ./.env
+    stdin_open: true
+    tty: true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ".:/usr/src/app"
+      # - "/var/Atendimentos-media:/usr/src/app/public/"
+    networks:
+      - Atendimentos_network
+      - Atendimentos_db_network
+    depends_on:
+      - Atendimentos-redis
+      - Atendimentos-db
+      - Atendimentos-rabbitmq
+
+  Atendimentos-redis:
+    container_name: "Atendimentos-redis"
+    image: 'redis:latest'
+    restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "6379:6379"
+    env_file:
+      - ./.env
+    volumes:
+      - '/var/Atendimentos/redis:/data'
+    networks:
+      - Atendimentos_db_network
+
+  # database containers, one for each db
+  Atendimentos-fixPermissionsPostregres:
+    image: 'bitnami/postgresql:14'
+    user: root
+    command: chown -R 1001:1001 /bitnami/postgresql
+    volumes:
+      - "/var/Atendimentos/pg:/bitnami/postgresql/data"
+
+  Atendimentos-db:
+    image: 'bitnami/postgresql:14'
+    restart: always
+    container_name: "Atendimentos-db"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - ./.env
+    volumes:
+      - "/var/Atendimentos/pg:/bitnami/postgresql/data"
+    ports:
+      - "5432:5432"
+    depends_on:
+      - Atendimentos-fixPermissionsPostregres
+    networks:
+      - Atendimentos_db_network
+
+  Atendimentos-rabbitmq:
+    image: rabbitmq:3-management
+    hostname: Atendimentos-rabbit
+    restart: always
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    env_file:
+      - ./.env
+    healthcheck:
+      test: [ "CMD", "nc", "-z", "localhost", "5672" ]
+      interval: 5s
+      timeout: 10s
+      retries: 3
+    volumes:
+      # - ./rabbitmq/etc/definitions.json:/etc/rabbitmq/definitions.json
+      # - ./rabbitmq/etc/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      # - ./rabbitmq/data:/var/lib/rabbitmq/mnesia/rabbit@my-rabbit
+      - /var/Atendimentos/rabbitmq/data/:/var/lib/rabbitmq/
+      - /var/Atendimentos/rabbitmq/logs/:/var/log/rabbitmq/log
+    ports:
+      - 5672:5672
+      - 15672:15672
+    networks:
+      - Atendimentos_db_network
+
+networks:
+  Atendimentos_network:
+    driver: bridge
+  Atendimentos_db_network:
+    driver: bridge
