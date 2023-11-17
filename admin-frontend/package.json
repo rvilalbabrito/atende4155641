@@ -12,7 +12,7 @@
   "dependencies": {
     "@quasar/extras": "^1.0.0",
     "apexcharts": "^3.32.0",
-    "axios": "^0.18.1",
+    "axios": "^1.6.0",
     "core-js": "^3.6.5",
     "date-fns": "^2.16.1",
     "drawflow": "0.0.53",
